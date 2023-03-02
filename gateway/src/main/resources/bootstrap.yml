@@ -1,0 +1,18 @@
+spring:
+  # profile
+  profiles:
+    active: dev
+  # nacos
+  cloud:
+    nacos:
+      discovery:
+        server-addr: http://175.27.155.139:8848
+        namespace: 2b8e403b-5358-4a03-985e-c1aca4734d14
+        group: gateway
+      config:
+        server-addr: http://175.27.155.139:8848
+        namespace: 2b8e403b-5358-4a03-985e-c1aca4734d14
+        group: gateway
+        file-extension: yaml
+        prefix: application
+
