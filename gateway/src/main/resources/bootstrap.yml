@@ -6,13 +6,13 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: http://175.27.155.139:8848
-        namespace: 2b8e403b-5358-4a03-985e-c1aca4734d14
-        group: gateway
+        server-addr: http://****
+        namespace: ****
+        group: user-service
       config:
-        server-addr: http://175.27.155.139:8848
-        namespace: 2b8e403b-5358-4a03-985e-c1aca4734d14
-        group: gateway
+        server-addr: ****
+        namespace: *****
+        group: user-service
         file-extension: yaml
         prefix: application
 
