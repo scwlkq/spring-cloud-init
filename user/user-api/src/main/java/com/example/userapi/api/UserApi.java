@@ -23,20 +23,18 @@ public interface UserApi {
      *
      * @param userAccount 用户账户
      * @param userPassword 用户密码
-     * @param checkPassword 校验密码
      * @return 新用户 id
      */
-    BaseResponse<Long> userRegister(String userAccount, String userPassword, String checkPassword);
+    BaseResponse<Long> userRegister(String userAccount, String userPassword);
 
     /**
      * 用户登录
      *
      * @param userAccount 用户账户
      * @param userPassword 用户密码
-     * @param request
      * @return 脱敏后的用户信息
      */
-    BaseResponse<User> userLogin(String userAccount, String userPassword, HttpServletRequest request);
+    BaseResponse<String> userLogin(String userAccount, String userPassword);
 
     /**
      * 用户脱敏
@@ -46,13 +44,6 @@ public interface UserApi {
      */
     User getSafetyUser(User originUser);
 
-    /**
-     * 用户注销
-     *
-     * @param request
-     * @return
-     */
-    BaseResponse<Integer> userLogout(HttpServletRequest request);
 
     /**
      * 是否为管理员

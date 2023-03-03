@@ -23,12 +23,12 @@ public class UserApiFallback implements UserApi {
     }
 
     @Override
-    public BaseResponse<Long> userRegister(String userAccount, String userPassword, String checkPassword) {
+    public BaseResponse<Long> userRegister(String userAccount, String userPassword) {
         return ResultUtils.error(ErrorCode.TIMEOUT_ERROR);
     }
 
     @Override
-    public BaseResponse<User> userLogin(String userAccount, String userPassword, HttpServletRequest request) {
+    public BaseResponse<String> userLogin(String userAccount, String userPassword) {
         return ResultUtils.error(ErrorCode.TIMEOUT_ERROR);
     }
 
@@ -37,10 +37,6 @@ public class UserApiFallback implements UserApi {
         return null;
     }
 
-    @Override
-    public BaseResponse<Integer> userLogout(HttpServletRequest request) {
-        return ResultUtils.error(ErrorCode.TIMEOUT_ERROR);
-    }
 
     @Override
     public BaseResponse<Boolean> isAdmin(HttpServletRequest request) {

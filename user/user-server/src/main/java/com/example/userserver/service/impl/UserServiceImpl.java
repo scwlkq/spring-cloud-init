@@ -5,6 +5,7 @@ import java.util.regex.Pattern;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.common.exception.BusinessException;
 import com.example.common.req.BaseResponse;
@@ -13,7 +14,9 @@ import com.example.common.req.ResultUtils;
 import com.example.userapi.api.UserApi;
 import com.example.userapi.constant.UserConstant;
 import com.example.userapi.domain.User;
+import com.example.userapi.enums.LoginTypeEnum;
 import com.example.userserver.mapper.UserMapper;
+import com.example.userserver.utils.SaTokenUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -46,15 +49,15 @@ public class UserServiceImpl implements UserApi {
     }
 
     @Override
-    public BaseResponse<Long> userRegister(String userAccount, String userPassword, String checkPassword) {
+    public BaseResponse<Long> userRegister(String userAccount, String userPassword) {
         // 1. 校验
-        if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
+        if (StringUtils.isAnyBlank(userAccount, userPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
         }
         if (userAccount.length() < 4) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号过短");
         }
-        if (userPassword.length() < 8 || checkPassword.length() < 8) {
+        if (userPassword.length() < 8 ) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户密码过短");
         }
         // 账户不能包含特殊字符
@@ -63,10 +66,7 @@ public class UserServiceImpl implements UserApi {
         if (matcher.find()) {
             return new BaseResponse<>(ErrorCode.USER_NAME_ERROR.getCode(), -(1L));
         }
-        // 密码和校验密码相同
-        if (!userPassword.equals(checkPassword)) {
-            return new BaseResponse<>(ErrorCode.PASSWROD_NOT_MATCH_ERROR.getCode(), -(1L));
-        }
+
         // 账户不能重复
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userAccount", userAccount);
@@ -90,7 +90,7 @@ public class UserServiceImpl implements UserApi {
     }
 
     @Override
-    public BaseResponse<User> userLogin(String userAccount, String userPassword, HttpServletRequest request) {
+    public BaseResponse<String> userLogin(String userAccount, String userPassword) {
         // 1. 校验
         if (StringUtils.isAnyBlank(userAccount, userPassword)) {
             return null;
@@ -121,9 +121,10 @@ public class UserServiceImpl implements UserApi {
         }
         // 3. 用户脱敏
         User safetyUser = getSafetyUser(user);
-        // 4. 记录用户的登录态
-        request.getSession().setAttribute(USER_LOGIN_STATE, safetyUser);
-        return ResultUtils.success(safetyUser);
+
+        StpUtil.login(safetyUser.getId());
+
+        return ResultUtils.success(SaTokenUtil.loginToSaTokenByJwtToken(safetyUser, LoginTypeEnum.AccountAndPass));
     }
 
     /**
@@ -151,17 +152,6 @@ public class UserServiceImpl implements UserApi {
         return safetyUser;
     }
 
-    /**
-     * 用户注销
-     *
-     * @param request
-     */
-    @Override
-    public BaseResponse<Integer> userLogout(HttpServletRequest request) {
-        // 移除登录态
-        request.getSession().removeAttribute(USER_LOGIN_STATE);
-        return ResultUtils.success(1);
-    }
 
     @Override
     public BaseResponse<Boolean> isAdmin(HttpServletRequest request) {
@@ -169,6 +159,7 @@ public class UserServiceImpl implements UserApi {
         User user = (User) userObj;
         return ResultUtils.success(user != null && user.getUserRole() == UserConstant.ADMIN_ROLE);
     }
+
 
     @Override
     public BaseResponse<Boolean> isAdmin(User user) {

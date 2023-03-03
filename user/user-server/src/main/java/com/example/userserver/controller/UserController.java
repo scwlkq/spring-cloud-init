@@ -1,5 +1,8 @@
 package com.example.userserver.controller;
 
+import cn.dev33.satoken.stp.SaTokenInfo;
+import cn.dev33.satoken.stp.StpUtil;
+import cn.dev33.satoken.util.SaResult;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.common.exception.BusinessException;
 import com.example.common.req.BaseResponse;
@@ -8,11 +11,12 @@ import com.example.common.req.ResultUtils;
 import com.example.userapi.domain.User;
 import com.example.userapi.domain.request.UserLoginRequest;
 import com.example.userapi.domain.request.UserRegisterRequest;
+import com.example.userapi.enums.LoginTypeEnum;
 import com.example.userserver.mapper.UserMapper;
 import com.example.userserver.service.impl.UserServiceImpl;
-import com.netflix.hystrix.contrib.javanica.annotation.DefaultProperties;
-import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
-import com.netflix.hystrix.contrib.javanica.annotation.HystrixProperty;
+import com.example.userserver.utils.SaTokenUtil;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
@@ -26,9 +30,8 @@ import java.util.stream.Collectors;
  *
  * @author yupi
  */
-@DefaultProperties(defaultFallback = "defaultFallback")
 @RestController
-@RequestMapping("/user")
+@Api("test1")
 public class UserController {
 
     @Resource
@@ -37,13 +40,8 @@ public class UserController {
     @Resource
     private UserMapper userMapper;
 
-    //服务熔断
-    @HystrixCommand(fallbackMethod = "fallback",commandProperties = {
-            @HystrixProperty(name = "circuitBreaker.enabled",value = "true"),  //是否开启断路器
-            @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold",value = "5"),   //请求次数
-            @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds",value = "10000"),  //时间范围
-            @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage",value = "60"), //失败率达到多少后跳闸
-    })
+
+    @ApiOperation("用户注册")
     @PostMapping("/register")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
         if (userRegisterRequest == null) {
@@ -51,23 +49,31 @@ public class UserController {
         }
         String userAccount = userRegisterRequest.getUserAccount();
         String userPassword = userRegisterRequest.getUserPassword();
-        String checkPassword = userRegisterRequest.getCheckPassword();
-        if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
+        if (StringUtils.isAnyBlank(userAccount, userPassword)) {
             return null;
         }
 
-        return userService.userRegister(userAccount, userPassword, checkPassword);
+        return userService.userRegister(userAccount, userPassword);
     }
 
-    //服务熔断
-    @HystrixCommand(fallbackMethod = "fallback",commandProperties = {
-            @HystrixProperty(name = "circuitBreaker.enabled",value = "true"),  //是否开启断路器
-            @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold",value = "5"),   //请求次数
-            @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds",value = "10000"),  //时间范围
-            @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage",value = "60"), //失败率达到多少后跳闸
-    })
+    /**
+     * 查询登录状态
+     * @return
+     */
+    @GetMapping("/isLogin")
+    public SaResult isLogin() {
+        return SaResult.ok("是否登录：" + StpUtil.isLogin());
+    }
+
+    /**
+     * 用户账号密码登录 返回的是token
+     * @param userLoginRequest
+     * @param request
+     * @return
+     */
+    @ApiOperation("用户账号密码登录")
     @PostMapping("/login")
-    public BaseResponse<User> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
+    public BaseResponse<String> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
         if (userLoginRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -77,48 +83,42 @@ public class UserController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
 
-        return userService.userLogin(userAccount, userPassword, request);
+        return ResultUtils.success(userService.userLogin(userAccount,userPassword).getData());
     }
 
-    //服务熔断
-    @HystrixCommand(fallbackMethod = "fallback",commandProperties = {
-            @HystrixProperty(name = "circuitBreaker.enabled",value = "true"),  //是否开启断路器
-            @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold",value = "5"),   //请求次数
-            @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds",value = "10000"),  //时间范围
-            @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage",value = "60"), //失败率达到多少后跳闸
-    })
+    /**
+     * 查询 Token 信息
+     * @return
+     */
+    @ApiOperation("获取token信息")
+    @GetMapping("/tokenInfo")
+    public BaseResponse<SaTokenInfo> tokenInfo() {
+        return ResultUtils.success(StpUtil.getTokenInfo());
+    }
+
+
+
+    @ApiOperation("注销")
     @PostMapping("/logout")
-    public BaseResponse<Integer> userLogout(HttpServletRequest request) {
-        if (request == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
-
-        return userService.userLogout(request);
+    public BaseResponse<Integer> userLogout() {
+        StpUtil.logout();
+        return ResultUtils.success(1);
     }
 
-    //服务熔断
-    @HystrixCommand(fallbackMethod = "fallback",commandProperties = {
-            @HystrixProperty(name = "circuitBreaker.enabled",value = "true"),  //是否开启断路器
-            @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold",value = "5"),   //请求次数
-            @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds",value = "10000"),  //时间范围
-            @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage",value = "60"), //失败率达到多少后跳闸
-    })
+
+    @ApiOperation("获取当前用户")
     @GetMapping("/current")
     public BaseResponse<User> getCurrentUser(HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request).getData();
         long userId = loginUser.getId();
         User user = userMapper.selectById(userId);
+
         User safetyUser = userService.getSafetyUser(user);
         return ResultUtils.success(safetyUser);
     }
 
-    //服务熔断
-    @HystrixCommand(fallbackMethod = "fallback",commandProperties = {
-            @HystrixProperty(name = "circuitBreaker.enabled",value = "true"),  //是否开启断路器
-            @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold",value = "5"),   //请求次数
-            @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds",value = "10000"),  //时间范围
-            @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage",value = "60"), //失败率达到多少后跳闸
-    })
+
+    @ApiOperation("查找用户")
     @GetMapping("/search")
     public BaseResponse<List<User>> searchUser(String username, HttpServletRequest request) {
         userService.assertAdmin(request);
@@ -131,13 +131,8 @@ public class UserController {
         return ResultUtils.success(list);
     }
 
-    //服务熔断
-    @HystrixCommand(fallbackMethod = "fallback",commandProperties = {
-            @HystrixProperty(name = "circuitBreaker.enabled",value = "true"),  //是否开启断路器
-            @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold",value = "5"),   //请求次数
-            @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds",value = "10000"),  //时间范围
-            @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage",value = "60"), //失败率达到多少后跳闸
-    })
+
+    @ApiOperation("删除用户")
     @PostMapping("/delete")
     public BaseResponse<Boolean> deleteUser(@RequestBody long id, HttpServletRequest request) {
         userService.assertAdmin(request);
@@ -147,10 +142,5 @@ public class UserController {
         boolean b = userMapper.deleteById(id)==1;
         return ResultUtils.success(b);
     }
-
-    public String defaultFallback() {
-        return  "系统繁忙请稍后再试！";
-    }
-
 
 }
